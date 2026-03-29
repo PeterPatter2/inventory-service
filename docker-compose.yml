@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend_erp
+      dockerfile: Dockerfile
+    container_name: g2_backend
+    ports:
+      - "8000:8000"
+    # Will map variables directly from the .env file in the same directory
+    env_file:
+      - .env
+    environment:
+      - ERPNEXT_URL=${ERPNEXT_URL}
+      - API_KEY=${API_KEY}
+      - API_SECRET=${API_SECRET}
+    restart: on-failure
+
+  frontend:
+    build:
+      context: ./frontend_erp
+      dockerfile: Dockerfile
+      args:
+        # We point it explicitly to the localhost proxy the user uses in browser
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: g2_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: on-failure
