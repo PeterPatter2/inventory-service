@@ -81,6 +81,43 @@ async def list_warehouses():
     return data.get("data", [])
 
 
+@router.get("/warehouse-summary", summary="Get total actual quantity per warehouse")
+async def get_warehouse_summary():
+    """Fetches all Bins (>0) and aggregates actual_qty by warehouse."""
+    params = {
+        "fields": json.dumps(["warehouse", "actual_qty"]),
+        "filters": json.dumps([["actual_qty", ">", 0]]), # สำคัญ: กรองเอาเฉพาะสินค้าที่มีอยู่จริง ไม่เอาค่าติดลบ
+        "limit_page_length": 0,
+    }
+    data = await erpnext_get("/api/resource/Bin", params)
+    bins = data.get("data", [])
+    
+    summary: dict[str, float] = {}
+    for b in bins:
+        wh = b.get("warehouse")
+        qty = float(b.get("actual_qty", 0))
+        if wh:
+            summary[wh] = summary.get(wh, 0) + qty
+            
+    # แปลงเป็น List และเรียงลำดับจากมากไปน้อย (เพื่อให้ได้ Top 5 ที่ถูกต้อง)
+    results = [{"name": wh, "qty": qty} for wh, qty in summary.items()]
+    results.sort(key=lambda x: x["qty"], reverse=True)
+    
+    return results
+
+
+@router.get("/warehouses/{warehouse}/inventory", summary="Get inventory items in a specific warehouse")
+async def get_warehouse_inventory(warehouse: str):
+    """Fetches all Bins for a specific warehouse."""
+    params = {
+        "fields": json.dumps(["item_code", "actual_qty", "valuation_rate"]),
+        "filters": json.dumps([["warehouse", "=", warehouse], ["actual_qty", ">", 0]]),
+        "limit_page_length": 0,
+    }
+    data = await erpnext_get("/api/resource/Bin", params)
+    return data.get("data", [])
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Stock Availability  (calculated from Stock Entry history)
 # ═══════════════════════════════════════════════════════════════════════

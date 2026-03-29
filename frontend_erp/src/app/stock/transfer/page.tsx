@@ -489,7 +489,7 @@ export default function StockTransferPage() {
                       <SelectContent>
                         {warehouses.map((wh) => (
                           <SelectItem key={wh.name} value={wh.name}>
-                            {wh.warehouse_name || wh.name}
+                            {wh.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -513,7 +513,7 @@ export default function StockTransferPage() {
                       <SelectContent>
                         {warehouses.map((wh) => (
                           <SelectItem key={wh.name} value={wh.name}>
-                            {wh.warehouse_name || wh.name}
+                            {wh.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

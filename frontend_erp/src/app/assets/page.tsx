@@ -129,7 +129,6 @@ export default function AssetsPage() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      // Ensure we only send the raw Item Code (strip concatenated text if it somehow leaked)
       const submitPayload = {
         ...createForm,
         item_code: createForm.item_code.split(" — ")[0].trim(),
@@ -237,42 +236,48 @@ export default function AssetsPage() {
                 <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
                   Status
                 </th>
+                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-6 py-3">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {loading
                 ? [...Array(5)].map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="px-6 py-4"><div className="h-4 w-20 bg-muted rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-4 w-40 bg-muted rounded" /></td>
-                      <td className="px-6 py-4 hidden md:table-cell"><div className="h-4 w-24 bg-muted rounded" /></td>
-                      <td className="px-6 py-4 hidden lg:table-cell"><div className="h-4 w-32 bg-muted rounded" /></td>
-                      <td className="px-6 py-4"><div className="h-5 w-16 bg-muted rounded-full" /></td>
-                    </tr>
-                  ))
+                  <tr key={i} className="animate-pulse">
+                    <td className="px-6 py-4"><div className="h-4 w-20 bg-muted rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-4 w-40 bg-muted rounded" /></td>
+                    <td className="px-6 py-4 hidden md:table-cell"><div className="h-4 w-24 bg-muted rounded" /></td>
+                    <td className="px-6 py-4 hidden lg:table-cell"><div className="h-4 w-32 bg-muted rounded" /></td>
+                    <td className="px-6 py-4"><div className="h-5 w-16 bg-muted rounded-full" /></td>
+                  </tr>
+                ))
                 : filtered.map((asset) => (
-                    <tr
-                      key={asset.name}
-                      onClick={() => router.push(`/assets/${encodeURIComponent(asset.name)}`)}
-                      className="hover:bg-muted/30 cursor-pointer transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <span className="text-sm font-mono text-muted-foreground">{asset.name}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm font-medium">{asset.asset_name}</p>
-                      </td>
-                      <td className="px-6 py-4 hidden md:table-cell">
-                        <span className="text-sm text-muted-foreground">{asset.item_code}</span>
-                      </td>
-                      <td className="px-6 py-4 hidden lg:table-cell">
-                        <span className="text-sm text-muted-foreground">{asset.location || "—"}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <StatusBadge status={asset.status} size="sm" />
-                      </td>
-                    </tr>
-                  ))}
+                  <tr
+                    key={asset.name}
+                    onClick={() => router.push(`/assets/${encodeURIComponent(asset.name)}`)}
+                    className="hover:bg-muted/30 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-mono text-muted-foreground">{asset.name}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-medium">{asset.asset_name}</p>
+                    </td>
+                    <td className="px-6 py-4 hidden md:table-cell">
+                      <span className="text-sm text-muted-foreground">{asset.item_code}</span>
+                    </td>
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      <span className="text-sm text-muted-foreground">{asset.location || "—"}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={asset.status} size="sm" />
+                    </td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={asset.status} size="sm" />
+                    </td>
+                  </tr>
+                ))}
               {!loading && filtered.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">

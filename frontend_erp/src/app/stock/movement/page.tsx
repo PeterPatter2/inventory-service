@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Loader2,
   ArrowRight,
-  Scan,
   Zap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,9 +103,6 @@ export default function StockMovementPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [success, setSuccess] = React.useState<string | null>(null);
 
-  const [scanInput, setScanInput] = React.useState("");
-  const scanRef = React.useRef<HTMLInputElement>(null);
-
   React.useEffect(() => {
     async function loadData() {
       try {
@@ -191,45 +187,6 @@ export default function StockMovementPage() {
     } catch {
       updateLine(lineId, { checkingAvailability: false, availability: null });
     }
-  };
-
-  // ─── Barcode scan ──────────────────────────────────────────
-  const handleScan = () => {
-    if (!scanInput.trim()) return;
-    const matched = items.find(
-      (i) => i.item_code.toLowerCase() === scanInput.trim().toLowerCase()
-    );
-    if (matched) {
-      const emptyLine = lineItems.find((l) => !l.item_code);
-      const lineId = emptyLine?.id || generateId();
-      if (emptyLine) {
-        updateLine(emptyLine.id, { item_code: matched.item_code });
-        autoFillSourceWarehouse(emptyLine.id, matched.item_code);
-      } else {
-        const newLine: LineItem = {
-          id: lineId,
-          item_code: matched.item_code,
-          qty: 1,
-          s_warehouse: "",
-          t_warehouse: "",
-        };
-        setLineItems((prev) => [...prev, newLine]);
-        setTimeout(() => autoFillSourceWarehouse(lineId, matched.item_code), 50);
-      }
-      addToast({
-        title: "Item Scanned",
-        description: `${matched.item_code} — ${matched.item_name}`,
-        variant: "success",
-      });
-    } else {
-      addToast({
-        title: "Item Not Found",
-        description: `No item matches "${scanInput}"`,
-        variant: "destructive",
-      });
-    }
-    setScanInput("");
-    scanRef.current?.focus();
   };
 
   const needsSource = entryType === "Material Transfer" || entryType === "Material Issue";
@@ -350,33 +307,6 @@ export default function StockMovementPage() {
         ))}
       </div>
 
-      {/* Barcode Scanner */}
-      <Card className="border-dashed border-2">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2">
-              <Scan className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1">
-              <Input
-                ref={scanRef}
-                placeholder="Scan barcode or type item code and press Enter..."
-                value={scanInput}
-                onChange={(e) => setScanInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleScan();
-                  }
-                }}
-                className="font-mono"
-              />
-            </div>
-            <Button variant="outline" size="sm" onClick={handleScan}>Add</Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Line Items */}
       <Card>
         <CardHeader className="pb-3 border-b mb-2">
@@ -463,7 +393,7 @@ export default function StockMovementPage() {
                       <SelectContent>
                         {warehouses.map((wh) => (
                           <SelectItem key={wh.name} value={wh.name}>
-                            {wh.warehouse_name || wh.name}
+                            {wh.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -485,7 +415,7 @@ export default function StockMovementPage() {
                       <SelectContent>
                         {warehouses.map((wh) => (
                           <SelectItem key={wh.name} value={wh.name}>
-                            {wh.warehouse_name || wh.name}
+                            {wh.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

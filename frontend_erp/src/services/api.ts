@@ -22,7 +22,7 @@ export interface LocationItem {
 
 // ─── Config ─────────────────────────────────────────────────────
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "http://127.0.0.1:8001";
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -77,12 +77,17 @@ export async function getAssets(): Promise<Asset[]> {
   return apiFetch<Asset[]>("/api/assets");
 }
 
+/** Fetch a single asset with full details (including schedules) */
+export async function getAsset(assetId: string): Promise<Asset> {
+  return apiFetch<Asset>(`/api/assets/${encodeURIComponent(assetId)}`);
+}
+
 /** Fetch all Location records from ERPNext */
 export async function fetchLocations(): Promise<LocationItem[]> {
   return apiFetch<LocationItem[]>("/api/locations");
 }
 
-/** Create a new asset and auto-submit */
+/** Create a new asset as Draft */
 export async function createAsset(
   payload: AssetCreateRequest
 ): Promise<AssetCreateResponse> {
@@ -90,6 +95,16 @@ export async function createAsset(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+/** Submit an asset (change status to Submitted) */
+export async function submitAsset(
+  assetId: string
+): Promise<ApiMessageResponse> {
+  return apiFetch<ApiMessageResponse>(
+    `/api/assets/${encodeURIComponent(assetId)}/submit`,
+    { method: "POST" }
+  );
 }
 
 /** Move an asset to a new location */

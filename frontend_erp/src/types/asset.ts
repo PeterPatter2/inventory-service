@@ -4,7 +4,32 @@ export type AssetStatus =
   | "Submitted"
   | "Partially Depreciated"
   | "Fully Depreciated"
+
+  | "Out of Order"
+  | "Out of Order (Maintain)"
   | "Scrapped";
+
+const MAINTENANCE_STATUS_ALIASES = new Set([
+  "in maintenance",
+  "under repair",
+  "maintenance",
+  "out of order",
+  "out of order (maintain)",
+  "out of order (maintenance)",
+]);
+
+function normalizeStatus(status: string): string {
+  return status
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+export function isMaintenanceStatus(status?: string | null): boolean {
+  if (!status) return false;
+  return MAINTENANCE_STATUS_ALIASES.has(normalizeStatus(status));
+}
 
 export const ASSET_STATUS_CONFIG: Record<
   string,
@@ -34,6 +59,18 @@ export const ASSET_STATUS_CONFIG: Record<
     bgColor: "bg-amber-50",
     dotColor: "bg-amber-500",
   },
+  "In Maintenance": {
+    label: "Under Repair",
+    color: "text-rose-700",
+    bgColor: "bg-rose-50",
+    dotColor: "bg-rose-500",  
+  },
+  "Out of Order": {
+    label: "Under Repair",
+    color: "text-rose-700",
+    bgColor: "bg-rose-50",
+    dotColor: "bg-rose-500",
+  },
   Scrapped: {
     label: "Scrapped",
     color: "text-red-700",
@@ -42,6 +79,14 @@ export const ASSET_STATUS_CONFIG: Record<
   },
 };
 
+export interface DepreciationSchedule {
+  name: string;
+  schedule_date: string;
+  depreciation_amount: number;
+  accumulated_depreciation_amount: number;
+  journal_entry?: string;
+}
+
 // ─── Asset (matches GET /api/assets response) ───────────────────
 export interface Asset {
   name: string;        // Asset ID from ERPNext (e.g., "AST-00001")
@@ -49,6 +94,10 @@ export interface Asset {
   status: string;      // ERPNext status string
   location: string;    // Location name string
   item_code: string;   // Item code
+  docstatus: number;   // 0=Draft, 1=Submitted
+  gross_purchase_amount?: number;
+  value_after_depreciation?: number;
+  schedules?: DepreciationSchedule[];
 }
 
 // ─── Request Models (match backend Pydantic models) ─────────────
