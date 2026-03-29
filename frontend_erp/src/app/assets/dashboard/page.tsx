@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { getAssets } from "@/services/api";
-import type { Asset } from "@/types/asset";
+import { isMaintenanceStatus, type Asset } from "@/types/asset";
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 
 export default function AssetDashboardPage() {
@@ -84,7 +84,8 @@ export default function AssetDashboardPage() {
   const submitted = safeAssets.filter((a) => a.status === "Submitted").length;
   const scrapped = safeAssets.filter((a) => a.status === "Scrapped").length;
   const draft = safeAssets.filter((a) => a.status === "Draft").length;
-  const inMaintenance = safeAssets.filter((a) => a.status === "In Maintenance").length;
+  const maintenanceAssets = safeAssets.filter((a) => isMaintenanceStatus(a.status));
+  const inMaintenance = maintenanceAssets.length;
 
   const metricCards = [
     {
@@ -238,13 +239,13 @@ export default function AssetDashboardPage() {
         </CardHeader>
         <CardContent>
            <div className="rounded-lg border">
-             {safeAssets.filter(a => a.status === "In Maintenance").length === 0 ? (
+             {maintenanceAssets.length === 0 ? (
                <div className="p-8 text-center text-muted-foreground">
                  No assets are currently in maintenance.
                </div>
              ) : (
                <div className="divide-y max-h-[300px] overflow-y-auto">
-                 {safeAssets.filter(a => a.status === "In Maintenance").map(asset => (
+                 {maintenanceAssets.map(asset => (
                    <div key={asset.name} className="flex justify-between items-center p-4 hover:bg-muted/50 transition">
                      <div className="flex flex-col gap-1">
                        <span className="font-semibold text-sm">{asset.asset_name || asset.name}</span>

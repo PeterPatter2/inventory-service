@@ -12,7 +12,7 @@ class AssetCreateRequest(BaseModel):
     item_code: str
     asset_name: str
     location: str
-    company: str = "PSE" # ต้องใส่ชื่อ Company ให้ตรงกับใน ERPNext
+    company: str = "Khon Kaen University" # ต้องใส่ชื่อ Company ให้ตรงกับใน ERPNext
     gross_purchase_amount: float
     purchase_date: str = date.today().isoformat()
     available_for_use_date: str = date.today().isoformat()
@@ -82,7 +82,6 @@ async def create_asset(request: AssetCreateRequest):
         "location": request.location,
         "company": request.company,
         "is_existing_asset": 1,
-        "cost_center": "Main - PSE", # ต้องระบุเพื่อให้ผ่าน validation ของบริษัท PSE
         "gross_purchase_amount": request.gross_purchase_amount,
         "purchase_date": request.purchase_date,
         "available_for_use_date": request.available_for_use_date

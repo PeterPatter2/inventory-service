@@ -106,7 +106,7 @@ export function Sidebar() {
           {!collapsed && (
             <div className="flex flex-col overflow-hidden">
               <span className="text-sm font-bold text-white tracking-wide truncate">
-                OmniSync ERP
+                Group_2 ERP
               </span>
               <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-widest">
                 Asset & Stock Mgmt

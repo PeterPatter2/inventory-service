@@ -17,7 +17,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAssets } from "@/services/api";
 import { getItems, getWarehouses } from "@/services/stock_api";
-import type { Asset } from "@/types/asset";
+import { isMaintenanceStatus, type Asset } from "@/types/asset";
 import type { Item, Warehouse } from "@/types/stock";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -46,7 +46,7 @@ export default function CombinedDashboardPage() {
   }, []);
 
   const totalAssets = assets.length;
-  const maintenanceAssets = assets.filter(a => a.status === "In Maintenance").length;
+  const maintenanceAssets = assets.filter(a => isMaintenanceStatus(a.status)).length;
   const stockItems = items.filter(i => i.is_stock_item === 1).length;
   const totalItems = items.length;
 

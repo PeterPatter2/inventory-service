@@ -3,7 +3,7 @@ import "./globals.css";
 import { ClientBody } from "./client-body";
 
 export const metadata: Metadata = {
-  title: "OmniSync ERP – Asset & Stock Management",
+  title: "Group_2 ERP – Asset & Stock Management",
   description:
     "Unified enterprise platform for asset lifecycle and inventory stock management.",
 };
