@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import Optional, List
 import httpx
 from datetime import date, datetime
 import os
@@ -8,14 +9,24 @@ from app.config import settings
 # ==========================================
 # Pydantic Models (โครงสร้างข้อมูลที่รับจาก Frontend)
 # ==========================================
+class FinanceBookItem(BaseModel):
+    finance_book: Optional[str] = ""
+    depreciation_method: str
+    frequency_of_depreciation: int
+    total_number_of_depreciations: int
+    expected_value_after_useful_life: float
+    depreciation_start_date: str
+
 class AssetCreateRequest(BaseModel):
     item_code: str
     asset_name: str
     location: str
-    company: str = "Khon Kaen University" # ต้องใส่ชื่อ Company ให้ตรงกับใน ERPNext
+    company: str = "PSE" # ต้องใส่ชื่อ Company ให้ตรงกับใน ERPNext
     gross_purchase_amount: float
     purchase_date: str = date.today().isoformat()
     available_for_use_date: str = date.today().isoformat()
+    calculate_depreciation: int = 0
+    finance_books: Optional[List[FinanceBookItem]] = []
 
 class AssetMoveRequest(BaseModel):
     asset_id: str # ชื่อ ID ทรัพย์สิน
@@ -58,7 +69,27 @@ async def get_asset_detail(asset_id: str):
         response = await client.get(url, headers=get_headers())
         if response.status_code != 200:
             raise HTTPException(status_code=response.status_code, detail=response.text)
-        return response.json().get("data", {})
+            
+        asset_data = response.json().get("data", {})
+        
+        # ERPNext v14+ moves 'schedules' into 'Asset Depreciation Schedule' document
+        try:
+            url_ads = f"{settings.erpnext_url}/api/resource/Asset Depreciation Schedule?filters=[[\"asset\",\"=\",\"{asset_id}\"]]&fields=[\"name\"]"
+            ads_res = await client.get(url_ads, headers=get_headers())
+            ads_data = ads_res.json().get("data", [])
+            
+            if ads_data:
+                ads_name = ads_data[0]["name"]
+                ads_detail_url = f"{settings.erpnext_url}/api/resource/Asset Depreciation Schedule/{ads_name}"
+                ads_detail_res = await client.get(ads_detail_url, headers=get_headers())
+                ads_detail_data = ads_detail_res.json().get("data", {})
+                asset_data["schedules"] = ads_detail_data.get("depreciation_schedule", [])
+            else:
+                asset_data["schedules"] = asset_data.get("schedules", [])
+        except Exception:
+            pass 
+            
+        return asset_data
 
 # 2. READ: ดึงรายการ Location ทั้งหมด
 @router.get("/locations")
@@ -76,7 +107,7 @@ async def get_locations():
 @router.post("/assets/create")
 async def create_asset(request: AssetCreateRequest):
     url_create = f"{settings.erpnext_url}/api/resource/Asset"
-    payload_create = {
+    payload_create: dict = {
         "item_code": request.item_code,
         "asset_name": request.asset_name,
         "location": request.location,
@@ -84,8 +115,15 @@ async def create_asset(request: AssetCreateRequest):
         "is_existing_asset": 1,
         "gross_purchase_amount": request.gross_purchase_amount,
         "purchase_date": request.purchase_date,
-        "available_for_use_date": request.available_for_use_date
+        "available_for_use_date": request.available_for_use_date,
+        "calculate_depreciation": 1 if request.calculate_depreciation else 0
     }
+    
+    if request.calculate_depreciation == 1 and request.finance_books:
+        payload_create["finance_books"] = [
+            book.model_dump() if hasattr(book, 'model_dump') else book.dict() 
+            for book in request.finance_books
+        ]
     
     async with httpx.AsyncClient() as client:
         # สเตปที่ 1: สร้าง Draft

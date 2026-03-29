@@ -140,7 +140,17 @@ export default function AssetDetailPage() {
   ];
 
   const formatCurrency = (val?: number) => 
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+    new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', minimumFractionDigits: 2 }).format(val || 0);
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "—";
+    try {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
+    } catch {
+      return dateString;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -250,6 +260,30 @@ export default function AssetDetailPage() {
                   <p className="text-xs text-muted-foreground">Current Net Value (Book Value)</p>
                   <p className="text-sm font-semibold">{formatCurrency(asset.value_after_depreciation)}</p>
                 </div>
+
+                {asset.calculate_depreciation === 1 && asset.finance_books?.[0] && (
+                  <div className="pt-4 mt-4 border-t border-dashed space-y-3">
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Depreciation Settings</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Method</p>
+                        <p className="font-medium text-xs truncate" title={asset.finance_books[0].depreciation_method}>{asset.finance_books[0].depreciation_method}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Frequency</p>
+                        <p className="font-medium text-xs">{asset.finance_books[0].frequency_of_depreciation} Months</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total Periods</p>
+                        <p className="font-medium text-xs">{asset.finance_books[0].total_number_of_depreciations}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Salvage Value</p>
+                        <p className="font-medium text-xs">{formatCurrency(asset.finance_books[0].expected_value_after_useful_life)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -276,25 +310,23 @@ export default function AssetDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {(asset.schedules || []).length > 0 ? (
-                      asset.schedules!.map((sch, idx) => (
-                        <tr key={sch.name} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-6 py-4 font-medium">#{idx + 1}</td>
-                          <td className="px-6 py-4">{sch.schedule_date}</td>
-                          <td className="px-6 py-4 text-right text-rose-600 font-medium">
+                    {(asset.schedules && asset.schedules.length > 0) ? (
+                      asset.schedules.map((sch, idx) => (
+                        <tr key={sch.name || idx.toString()} className="hover:bg-muted/20 transition-colors">
+                          <td className="px-6 py-4 font-medium">{idx + 1}</td>
+                          <td className="px-6 py-4">{formatDate(sch.schedule_date)}</td>
+                          <td className="px-6 py-4 text-right text-rose-600 font-medium whitespace-nowrap">
                             -{formatCurrency(sch.depreciation_amount)}
                           </td>
-                          <td className="px-6 py-4 text-right font-semibold">
+                          <td className="px-6 py-4 text-right font-semibold whitespace-nowrap">
                             {formatCurrency(sch.accumulated_depreciation_amount)}
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
-                          {asset.docstatus === 0 
-                            ? "No schedule available. Asset must be submitted to calculate depreciation."
-                            : "No depreciation schedule found."}
+                      <tr className="hover:bg-transparent">
+                        <td colSpan={4} className="text-center text-muted-foreground py-8">
+                          No depreciation schedule found. Make sure the asset is submitted and calculate depreciation is enabled.
                         </td>
                       </tr>
                     )}

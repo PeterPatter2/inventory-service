@@ -53,10 +53,21 @@ export default function CombinedDashboardPage() {
   // Financial Calculations
   const totalNetValue = assets.reduce((sum, a) => sum + (a.value_after_depreciation || 0), 0);
   const totalPurchase = assets.reduce((sum, a) => sum + (a.gross_purchase_amount || 0), 0);
-  // Simulating "This Month Depreciation" as roughly 1/60th of total (assuming 5 year average) if not available
+  // Calculate accurate monthly depreciation if finance_books is present
   const monthlyDepr = assets
     .filter(a => a.docstatus === 1) // Only submitted assets depreciate
-    .reduce((sum, a) => sum + ((a.gross_purchase_amount || 0) - (a.value_after_depreciation || 0)) / 12, 0);
+    .reduce((sum, a) => {
+      if (a.calculate_depreciation === 1 && a.finance_books && a.finance_books.length > 0) {
+        const fb = a.finance_books[0];
+        const cost = a.gross_purchase_amount || 0;
+        const salvage = fb.expected_value_after_useful_life || 0;
+        const totalMonths = (fb.total_number_of_depreciations || 1) * (fb.frequency_of_depreciation || 1);
+        if (totalMonths > 0) {
+          return sum + ((cost - salvage) / totalMonths);
+        }
+      }
+      return sum + ((a.gross_purchase_amount || 0) - (a.value_after_depreciation || 0)) / 12;
+    }, 0);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);

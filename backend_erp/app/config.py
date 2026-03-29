@@ -11,8 +11,8 @@ load_dotenv()
 class Settings:
     erpnext_url: str = os.getenv("ERPNEXT_URL", "http://localhost:8080")
     # auth_token: "token API_KEY:API_SECRET"
-    api_key: str = os.getenv("API_KEY", "24b01b2e1edc3f4")
-    api_secret: str = os.getenv("API_SECRET", "6cb39df8fef5f1f")
+    api_key: str = os.getenv("API_KEY", "fd20a041c791062")
+    api_secret: str = os.getenv("API_SECRET", "47deadcc13ea37e")
     
     @property
     def auth_token(self) -> str:

@@ -61,11 +61,26 @@ export default function AssetsPage() {
   const [locationOptions, setLocationOptions] = React.useState<LocationItem[]>([]);
 
   // Create form state
+  const getToday = () => new Date().toISOString().split("T")[0];
+  const getNextMonth = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1);
+    return d.toISOString().split("T")[0];
+  };
+
   const [createForm, setCreateForm] = React.useState({
     item_code: "",
     asset_name: "",
     location: "",
+    purchase_date: getToday(),
+    available_for_use_date: getToday(),
     gross_purchase_amount: 0,
+    calculate_depreciation: false,
+    depreciation_method: "Straight Line" as "Straight Line" | "Double Declining Balance" | "Written Down Value",
+    frequency_of_depreciation: 12,
+    total_number_of_depreciations: 60,
+    expected_value_after_useful_life: 0,
+    depreciation_start_date: getNextMonth(),
   });
 
   const loadAssets = React.useCallback(async () => {
@@ -129,10 +144,29 @@ export default function AssetsPage() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      const submitPayload = {
-        ...createForm,
+      const submitPayload: any = {
         item_code: createForm.item_code.split(" — ")[0].trim(),
+        asset_name: createForm.asset_name,
+        location: createForm.location,
+        purchase_date: createForm.purchase_date,
+        available_for_use_date: createForm.available_for_use_date,
+        gross_purchase_amount: createForm.gross_purchase_amount,
+        calculate_depreciation: createForm.calculate_depreciation ? 1 : 0,
       };
+
+      if (createForm.calculate_depreciation) {
+        submitPayload.finance_books = [
+          {
+            finance_book: "",
+            depreciation_method: createForm.depreciation_method,
+            frequency_of_depreciation: createForm.frequency_of_depreciation,
+            total_number_of_depreciations: createForm.total_number_of_depreciations,
+            expected_value_after_useful_life: createForm.expected_value_after_useful_life,
+            depreciation_start_date: createForm.depreciation_start_date,
+          }
+        ];
+      }
+
       const res = await createAsset(submitPayload);
       addToast({
         title: "Asset Created",
@@ -140,7 +174,20 @@ export default function AssetsPage() {
         variant: "success",
       });
       setShowCreate(false);
-      setCreateForm({ item_code: "", asset_name: "", location: "", gross_purchase_amount: 0 });
+      setCreateForm({
+        item_code: "",
+        asset_name: "",
+        location: "",
+        purchase_date: getToday(),
+        available_for_use_date: getToday(),
+        gross_purchase_amount: 0,
+        calculate_depreciation: false,
+        depreciation_method: "Straight Line",
+        frequency_of_depreciation: 12,
+        total_number_of_depreciations: 60,
+        expected_value_after_useful_life: 0,
+        depreciation_start_date: getNextMonth(),
+      });
       loadAssets();
     } catch (err) {
       addToast({
@@ -367,22 +414,103 @@ export default function AssetsPage() {
               )}
             </div>
 
-            {/* Purchase Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">Purchase Amount (THB) *</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="0"
-                value={createForm.gross_purchase_amount || ""}
-                onChange={(e) =>
-                  setCreateForm((p) => ({
-                    ...p,
-                    gross_purchase_amount: parseFloat(e.target.value) || 0,
-                  }))
-                }
-              />
+            {/* Purchase Date & Amount */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Purchase Date *</Label>
+                <Input
+                  type="date"
+                  value={createForm.purchase_date}
+                  onChange={(e) => setCreateForm(p => ({ ...p, purchase_date: e.target.value, available_for_use_date: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (THB) *</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="0"
+                  value={createForm.gross_purchase_amount || ""}
+                  onChange={(e) =>
+                    setCreateForm((p) => ({
+                      ...p,
+                      gross_purchase_amount: parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                />
+              </div>
             </div>
+
+            {/* Depreciation Section */}
+            <div className="pt-4 border-t space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="calc_depr"
+                  checked={createForm.calculate_depreciation}
+                  onChange={(e) => setCreateForm(p => ({ ...p, calculate_depreciation: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="calc_depr" className="cursor-pointer font-semibold">Enable Financial Depreciation</Label>
+              </div>
+
+              {createForm.calculate_depreciation && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
+                  <div className="space-y-2 col-span-1 sm:col-span-2">
+                    <Label>Depreciation Method *</Label>
+                    <Select
+                      value={createForm.depreciation_method}
+                      onValueChange={(v: "Straight Line" | "Double Declining Balance" | "Written Down Value") => setCreateForm(p => ({ ...p, depreciation_method: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Straight Line">Straight Line</SelectItem>
+                        <SelectItem value="Double Declining Balance">Double Declining Balance</SelectItem>
+                        <SelectItem value="Written Down Value">Written Down Value</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Frequency (Months) *</Label>
+                    <Input
+                      type="number"
+                      placeholder="12"
+                      value={createForm.frequency_of_depreciation || ""}
+                      onChange={(e) => setCreateForm(p => ({ ...p, frequency_of_depreciation: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Total Depreciations *</Label>
+                    <Input
+                      type="number"
+                      placeholder="60"
+                      value={createForm.total_number_of_depreciations || ""}
+                      onChange={(e) => setCreateForm(p => ({ ...p, total_number_of_depreciations: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Salvage Value (THB)</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={createForm.expected_value_after_useful_life || ""}
+                      onChange={(e) => setCreateForm(p => ({ ...p, expected_value_after_useful_life: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Start Date *</Label>
+                    <Input
+                      type="date"
+                      value={createForm.depreciation_start_date}
+                      onChange={(e) => setCreateForm(p => ({ ...p, depreciation_start_date: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>

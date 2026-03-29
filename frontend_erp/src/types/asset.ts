@@ -80,11 +80,21 @@ export const ASSET_STATUS_CONFIG: Record<
 };
 
 export interface DepreciationSchedule {
-  name: string;
+  name?: string;
   schedule_date: string;
   depreciation_amount: number;
   accumulated_depreciation_amount: number;
-  journal_entry?: string;
+  journal_entry?: string; // Links to the accounting ledger if posted
+  make_custom_gl_entry?: number;
+}
+
+export interface FinanceBook {
+  finance_book?: string; // Can be empty string
+  depreciation_method: "Straight Line" | "Double Declining Balance" | "Written Down Value";
+  frequency_of_depreciation: number; // in months (e.g., 12)
+  total_number_of_depreciations: number;
+  expected_value_after_useful_life: number; // Salvage value
+  depreciation_start_date: string; // YYYY-MM-DD
 }
 
 // ─── Asset (matches GET /api/assets response) ───────────────────
@@ -97,6 +107,10 @@ export interface Asset {
   docstatus: number;   // 0=Draft, 1=Submitted
   gross_purchase_amount?: number;
   value_after_depreciation?: number;
+  calculate_depreciation?: 1 | 0;
+  opening_accumulated_depreciation?: number;
+  opening_number_of_booked_depreciations?: number;
+  finance_books?: FinanceBook[];
   schedules?: DepreciationSchedule[];
 }
 
@@ -109,6 +123,10 @@ export interface AssetCreateRequest {
   gross_purchase_amount: number;
   purchase_date?: string;        // ISO date
   available_for_use_date?: string;
+  calculate_depreciation?: 1 | 0;
+  opening_accumulated_depreciation?: number;
+  opening_number_of_booked_depreciations?: number;
+  finance_books?: FinanceBook[];
 }
 
 export interface AssetMoveRequest {
