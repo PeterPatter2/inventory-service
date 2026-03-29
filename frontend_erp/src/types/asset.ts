@@ -42,6 +42,14 @@ export const ASSET_STATUS_CONFIG: Record<
   },
 };
 
+export interface DepreciationSchedule {
+  name: string;
+  schedule_date: string;
+  depreciation_amount: number;
+  accumulated_depreciation_amount: number;
+  journal_entry?: string;
+}
+
 // ─── Asset (matches GET /api/assets response) ───────────────────
 export interface Asset {
   name: string;        // Asset ID from ERPNext (e.g., "AST-00001")
@@ -49,6 +57,10 @@ export interface Asset {
   status: string;      // ERPNext status string
   location: string;    // Location name string
   item_code: string;   // Item code
+  docstatus: number;   // 0=Draft, 1=Submitted
+  gross_purchase_amount?: number;
+  value_after_depreciation?: number;
+  schedules?: DepreciationSchedule[];
 }
 
 // ─── Request Models (match backend Pydantic models) ─────────────

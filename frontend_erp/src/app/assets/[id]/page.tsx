@@ -10,8 +10,9 @@ import {
   Tag,
   Hash,
   MapPin,
+  Calendar,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -25,7 +26,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/toast";
-import { getAssets, repairAsset, scrapAsset, ApiError } from "@/services/api";
+import { getAsset, submitAsset, repairAsset, scrapAsset, ApiError } from "@/services/api";
 import type { Asset } from "@/types/asset";
 
 export default function AssetDetailPage() {
@@ -42,22 +43,20 @@ export default function AssetDetailPage() {
 
   const assetId = decodeURIComponent(params.id as string);
 
-  React.useEffect(() => {
-    async function loadData() {
-      try {
-        // Backend doesn't have a GET /api/assets/{id} currently, 
-        // so we fetch all and find the specific one.
-        const allAssets = await getAssets();
-        const found = allAssets.find((a) => a.name === assetId);
-        setAsset(found || null);
-      } catch (err) {
-        setAsset(null);
-      } finally {
-        setLoading(false);
-      }
+  const loadData = React.useCallback(async () => {
+    try {
+      const data = await getAsset(assetId);
+      setAsset(data);
+    } catch (err) {
+      setAsset(null);
+    } finally {
+      setLoading(false);
     }
-    loadData();
   }, [assetId]);
+
+  React.useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleMaintenance = async () => {
     if (!asset || !maintenanceDesc) return;
@@ -74,7 +73,7 @@ export default function AssetDetailPage() {
       });
       setConfirmAction(null);
       setMaintenanceDesc("");
-      router.push("/assets"); // Return to list after action
+      loadData();
     } catch (err) {
       addToast({
         title: "Maintenance Failed",
@@ -97,7 +96,7 @@ export default function AssetDetailPage() {
         variant: "success",
       });
       setConfirmAction(null);
-      router.push("/assets"); // Return to list after action
+      loadData();
     } catch (err) {
       addToast({
         title: "Scrap Failed",
@@ -140,6 +139,9 @@ export default function AssetDetailPage() {
     { icon: MapPin, label: "Location", value: asset.location || "Unassigned" },
   ];
 
+  const formatCurrency = (val?: number) => 
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+
   return (
     <div className="space-y-6">
       {/* Back button */}
@@ -176,8 +178,7 @@ export default function AssetDetailPage() {
                     <ArrowRightLeft className="h-4 w-4 mr-1.5" />
                     Transfer
                   </Button>
-                  {/* Assuming we only repair assets that aren't already scrapped or draft */}
-                  {(asset.status === "Submitted" || asset.status === "Partially Depreciated" || asset.status === "Fully Depreciated") && (
+                  {(asset.docstatus === 1 && asset.status !== "Scrapped") && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -203,33 +204,109 @@ export default function AssetDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Details Card */}
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-            Asset Information
-          </h3>
-          <div className="grid gap-6 sm:grid-cols-2">
-            {detailFields.map((field) => (
-              <div key={field.label} className="flex items-start gap-3">
-                <div className="rounded-lg bg-muted p-2 shrink-0">
-                  <field.icon className="h-4 w-4 text-muted-foreground" />
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Info Column */}
+        <div className="lg:col-span-1 space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-xs font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+                Asset Information
+              </h3>
+              <div className="space-y-5">
+                {detailFields.map((field) => (
+                  <div key={field.label} className="flex items-start gap-3">
+                    <div className="rounded-lg bg-muted p-2 shrink-0">
+                      <field.icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        {field.label}
+                      </p>
+                      <p className="text-sm font-medium mt-0.5">
+                        {field.value}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-xs font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+                Financial Summary
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Gross Purchase Amount</p>
+                  <p className="text-lg font-bold">{formatCurrency(asset.gross_purchase_amount)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {field.label}
-                  </p>
-                  <p className="text-sm font-medium mt-0.5">
-                    {field.value}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Value After Depreciation</p>
+                  <p className="text-lg font-bold text-emerald-600">{formatCurrency(asset.value_after_depreciation)}</p>
+                </div>
+                <div className="pt-2 border-t border-dashed">
+                  <p className="text-xs text-muted-foreground">Current Net Value (Book Value)</p>
+                  <p className="text-sm font-semibold">{formatCurrency(asset.value_after_depreciation)}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Maintenance Dialog */}
+        {/* Schedule Column */}
+        <div className="lg:col-span-2">
+          <Card className="h-full">
+            <CardHeader className="border-b bg-muted/20">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                Depreciation Schedule
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30 border-b">
+                    <tr>
+                      <th className="text-left px-6 py-3 font-medium text-muted-foreground">Period</th>
+                      <th className="text-left px-6 py-3 font-medium text-muted-foreground">Schedule Date</th>
+                      <th className="text-right px-6 py-3 font-medium text-muted-foreground">Depreciation</th>
+                      <th className="text-right px-6 py-3 font-medium text-muted-foreground">Accumulated</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {(asset.schedules || []).length > 0 ? (
+                      asset.schedules!.map((sch, idx) => (
+                        <tr key={sch.name} className="hover:bg-muted/20 transition-colors">
+                          <td className="px-6 py-4 font-medium">#{idx + 1}</td>
+                          <td className="px-6 py-4">{sch.schedule_date}</td>
+                          <td className="px-6 py-4 text-right text-rose-600 font-medium">
+                            -{formatCurrency(sch.depreciation_amount)}
+                          </td>
+                          <td className="px-6 py-4 text-right font-semibold">
+                            {formatCurrency(sch.accumulated_depreciation_amount)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground">
+                          {asset.docstatus === 0 
+                            ? "No schedule available. Asset must be submitted to calculate depreciation."
+                            : "No depreciation schedule found."}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* maintenance Dialog */}
       <Dialog
         open={confirmAction === "maintenance"}
         onOpenChange={(open) => !open && setConfirmAction(null)}

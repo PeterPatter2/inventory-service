@@ -181,7 +181,7 @@ export default function AvailabilityPage() {
                 <SelectItem value="all">All Warehouses</SelectItem>
                 {warehouses.map((wh) => (
                   <SelectItem key={wh.name} value={wh.name}>
-                    {wh.warehouse_name || wh.name}
+                    {wh.name}
                   </SelectItem>
                 ))}
               </SelectContent>

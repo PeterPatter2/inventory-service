@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Settings,
   Boxes,
+  Warehouse,
   TruckIcon,
   BarChart3,
   Layers,
@@ -34,10 +35,16 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
+    title: "Overview",
+    items: [
+      { label: "Combined Dashboard", href: "/", icon: LayoutDashboard, exact: true },
+    ]
+  },
+  {
     title: "Assets",
     items: [
-      { label: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
-      { label: "Asset Directory", href: "/assets", icon: Package },
+      { label: "Asset Dashboard", href: "/assets/dashboard", icon: BarChart3, exact: true },
+      { label: "Asset Directory", href: "/assets", icon: Package, exact: true },
       { label: "Asset Transfer", href: "/transfer", icon: ArrowRightLeft },
     ],
   },
@@ -45,6 +52,7 @@ const navSections: NavSection[] = [
     title: "Stock / Inventory",
     items: [
       { label: "Stock Dashboard", href: "/stock", icon: BarChart3, exact: true },
+      { label: "Warehouse Explorer", href: "/stock/explorer", icon: Warehouse },
       { label: "Inventory", href: "/stock/items", icon: Boxes },
       { label: "Availability", href: "/stock/availability", icon: Eye },
       { label: "Stock Movement", href: "/stock/movement", icon: TruckIcon },

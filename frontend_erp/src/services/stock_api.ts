@@ -1,7 +1,7 @@
 /**
  * Stock API Service Layer
  * -----------------------
- * Calls the Stock FastAPI backend at http://127.0.0.1:8001.
+ * Calls the Stock FastAPI backend at http://127.0.0.1:8000.
  * Completely separate from the Asset API service.
  */
 
@@ -16,7 +16,7 @@ import type {
 
 // ─── Config ─────────────────────────────────────────────────────
 
-const STOCK_API_BASE = "http://127.0.0.1:8001";
+const STOCK_API_BASE = "http://127.0.0.1:8000";
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -87,6 +87,16 @@ export async function createItem(payload: ItemCreateRequest): Promise<Item> {
 /** List all warehouses */
 export async function getWarehouses(): Promise<Warehouse[]> {
   return stockFetch<Warehouse[]>("/api/stock/warehouses");
+}
+
+/** Get total stock qty per warehouse for distribution chart */
+export async function getWarehouseSummary(): Promise<{ name: string; qty: number }[]> {
+  return stockFetch<{ name: string; qty: number }[]>("/api/stock/warehouse-summary");
+}
+
+/** Get detailed inventory items for a specific warehouse */
+export async function getWarehouseInventory(warehouse: string): Promise<{ item_code: string; actual_qty: number; valuation_rate: number }[]> {
+  return stockFetch<{ item_code: string; actual_qty: number; valuation_rate: number }[]>(`/api/stock/warehouses/${encodeURIComponent(warehouse)}/inventory`);
 }
 
 // ─── Stock Availability ─────────────────────────────────────────
