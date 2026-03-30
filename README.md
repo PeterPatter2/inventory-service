@@ -1,6 +1,6 @@
-# OmniSync ERP Management System (Group 2) 🚀
+# Stock & Asset ERP Management System (Group 2) 🚀
 
-This repository contains the complete frontend and backend services for the **Group 2 University Demo** project. The system is entirely Dockerized and designed to integrate seamlessly with ERPNext, featuring automated application staging and data seeding.
+This repository contains the complete frontend and backend services for the **Group 2** project. The system is entirely Dockerized and designed to integrate seamlessly with ERPNext, featuring automated application staging and data seeding.
 
 ## 🌟 Project Architecture
 - **Frontend**: Next.js (TypeScript, Tailwind CSS, shadcn/ui) running on Port `3000`.
