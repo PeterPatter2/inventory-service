@@ -35,7 +35,7 @@ API_SECRET=your_api_secret_here
 ### 3. Launch the Platform
 Start both the Frontend and Backend services automatically using Docker Compose. Make sure you run this from the root directory:
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 ### What happens in the background?
