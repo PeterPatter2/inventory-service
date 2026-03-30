@@ -68,10 +68,14 @@ def main():
         "asset_category_name": "IT_TOOLS_G2",
     }, [["asset_category_name", "=", "IT_TOOLS_G2"]])
     
-    # 4. Location
+    # 4. Locations
     create_doc("Location", {
         "location_name": "Engineering Building G2"
     }, [["location_name", "=", "Engineering Building G2"]])
+    
+    create_doc("Location", {
+        "location_name": "IT Room G2"
+    }, [["location_name", "=", "IT Room G2"]])
     
     # 5. Warehouse
     create_doc("Warehouse", {

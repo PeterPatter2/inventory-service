@@ -54,7 +54,7 @@ During the startup phase, the `seed_erpnext.py` script automatically stages the 
 - **Company**: Group 2 Corporation (G2)
 - **Item Group**: Hardware G2
 - **Asset Category**: IT_TOOLS_G2
-- **Location**: Engineering Building G2
+- **Locations (2)**: "Engineering Building G2" and "IT Room G2" (having two locations enables the professor to safely test the Asset Transfer functionality)
 - **Warehouse**: Stores - G2
 - **Items**: 
   - `APT_001_G2` (Asset Tracking Demo)
