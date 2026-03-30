@@ -1,4 +1,4 @@
-# Stock & Asset ERP Management System (Group 2) 🚀
+# Inventory-service (Group 2) 🚀
 
 This repository contains the complete frontend and backend services for the **Group 2** project. The system is entirely Dockerized and designed to integrate seamlessly with ERPNext, featuring automated application staging and data seeding.
 
@@ -19,8 +19,8 @@ This repository contains the complete frontend and backend services for the **Gr
 ### 1. Clone the Repository
 Open your terminal and clone the repository to your host machine:
 ```bash
-git clone https://github.com/PeterPatter2/Group2_Stock-And-Asset.git
-cd Group2_Stock-And-Asset
+git clone https://github.com/PeterPatter2/inventory-service.git
+cd inventory-service
 ```
 
 ### 2. Configure Environment Variables
