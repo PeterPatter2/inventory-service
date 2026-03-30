@@ -12,6 +12,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+!frontend_erp/src/lib/
+!frontend_erp/src/lib/**
 lib64/
 parts/
 sdist/
