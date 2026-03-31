@@ -10,6 +10,8 @@ import type {
   ItemCreateRequest,
   Warehouse,
   StockAvailability,
+  LowStockItem,
+  RecentActivityItem,
   StockEntryCreateRequest,
   StockEntryResponse,
 } from "@/types/stock";
@@ -97,6 +99,16 @@ export async function getWarehouseSummary(): Promise<{ name: string; qty: number
 /** Get detailed inventory items for a specific warehouse */
 export async function getWarehouseInventory(warehouse: string): Promise<{ item_code: string; actual_qty: number; valuation_rate: number }[]> {
   return stockFetch<{ item_code: string; actual_qty: number; valuation_rate: number }[]>(`/api/stock/warehouses/${encodeURIComponent(warehouse)}/inventory`);
+}
+
+/** Get all items below reorder level (low stock alert) */
+export async function getLowStockItems(): Promise<LowStockItem[]> {
+  return stockFetch<LowStockItem[]>("/api/stock/low-stock");
+}
+
+/** Get 5 most recent stock movements */
+export async function getRecentActivity(): Promise<RecentActivityItem[]> {
+  return stockFetch<RecentActivityItem[]>("/api/stock/recent-activity");
 }
 
 // ─── Stock Availability ─────────────────────────────────────────

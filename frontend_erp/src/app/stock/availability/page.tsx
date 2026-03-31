@@ -25,12 +25,16 @@ import {
   getWarehouses,
   getStockAvailability,
   getStockAllWarehouses,
+  getLowStockItems,
+  getRecentActivity,
   StockApiError,
 } from "@/services/stock_api";
 import type {
   Item,
   Warehouse as WarehouseType,
   StockAvailability,
+  LowStockItem,
+  RecentActivityItem,
 } from "@/types/stock";
 import { getStockLevel, STOCK_LEVEL_CONFIG } from "@/types/stock";
 import { cn } from "@/lib/utils";
@@ -41,6 +45,14 @@ export default function AvailabilityPage() {
   const [warehouses, setWarehouses] = React.useState<WarehouseType[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Low Stock Alert
+  const [lowStockItems, setLowStockItems] = React.useState<LowStockItem[]>([]);
+  const [lowStockLoading, setLowStockLoading] = React.useState(true);
+
+  // Recent Activity
+  const [recentActivity, setRecentActivity] = React.useState<RecentActivityItem[]>([]);
+  const [recentActivityLoading, setRecentActivityLoading] = React.useState(true);
 
   // Search & filter
   const [selectedItem, setSelectedItem] = React.useState("");
@@ -59,16 +71,22 @@ export default function AvailabilityPage() {
   React.useEffect(() => {
     async function loadData() {
       try {
-        const [itemData, warehouseData] = await Promise.all([
+        const [itemData, warehouseData, lowStockData, recentActivityData] = await Promise.all([
           getItems(),
           getWarehouses(),
+          getLowStockItems(),
+          getRecentActivity(),
         ]);
         setItems(itemData.filter((i) => i.is_stock_item === 1));
         setWarehouses(warehouseData);
+        setLowStockItems(lowStockData);
+        setRecentActivity(recentActivityData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
         setLoading(false);
+        setLowStockLoading(false);
+        setRecentActivityLoading(false);
       }
     }
     loadData();
@@ -197,6 +215,69 @@ export default function AvailabilityPage() {
         </CardContent>
       </Card>
 
+      {/* Low Stock Alert Summary */}
+      {!lowStockLoading && lowStockItems.length > 0 && (
+        <Card className="border-amber-300 border-2 bg-amber-50">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-900">
+                    ⚠️ {lowStockItems.length} Item{lowStockItems.length !== 1 ? "s" : ""} Below Reorder Level
+                  </h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Urgent action needed to replenish stock
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Low Stock Items Table */}
+            <div className="overflow-x-auto -mx-5 px-5">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-amber-200 text-amber-900">
+                    <th className="text-left py-2 font-semibold">Item</th>
+                    <th className="text-center py-2 font-semibold">Actual</th>
+                    <th className="text-center py-2 font-semibold">Reorder</th>
+                    <th className="text-center py-2 font-semibold">Shortage</th>
+                    <th className="text-center py-2 font-semibold">Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lowStockItems.slice(0, 5).map((item) => (
+                    <tr key={item.item_code} className="border-b border-amber-100 hover:bg-amber-100/30">
+                      <td className="py-3 font-medium text-amber-900">
+                        <div>
+                          <p className="font-mono text-xs text-amber-700">{item.item_code}</p>
+                          <p className="text-sm">{item.item_name}</p>
+                        </div>
+                      </td>
+                      <td className="text-center py-3 font-semibold text-amber-700">{item.actual_qty}</td>
+                      <td className="text-center py-3 font-semibold">{item.reorder_level}</td>
+                      <td className="text-center py-3">
+                        <span className="inline-block px-3 py-1 rounded-full bg-red-100 text-red-700 font-bold text-sm">
+                          -{item.shortage}
+                        </span>
+                      </td>
+                      <td className="text-center py-3 text-amber-700">{item.stock_uom}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {lowStockItems.length > 5 && (
+              <p className="text-xs text-amber-700 mt-3 text-center">
+                +{lowStockItems.length - 5} more item{lowStockItems.length - 5 !== 1 ? "s" : ""} with low stock
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+
       {/* Results */}
       {hasSearched && (
         <>
@@ -275,6 +356,94 @@ export default function AvailabilityPage() {
             </>
           )}
         </>
+      )}
+
+      {/* Recent Activity */}
+      {!recentActivityLoading && recentActivity.length > 0 && (
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Warehouse className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Recent Activity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Last 5 stock movements
+                </p>
+              </div>
+            </div>
+
+            {/* Recent Activity Table */}
+            <div className="overflow-x-auto -mx-5 px-5">
+              <div className="min-w-[860px] overflow-hidden rounded-xl border border-gray-200 bg-white">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[13%]" />
+                  <col className="w-[30%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[31%]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50/70 text-gray-600">
+                    <th className="px-4 py-3 text-left font-semibold">Date</th>
+                    <th className="px-4 py-3 text-left font-semibold">Item</th>
+                    <th className="px-4 py-3 text-center font-semibold">Type</th>
+                    <th className="px-4 py-3 text-center font-semibold">Qty</th>
+                    <th className="px-4 py-3 text-left font-semibold">Warehouse</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentActivity.slice(0, 5).map((activity, idx) => {
+                    const typeColors: Record<string, { badge: string; text: string }> = {
+                      "Material Receipt": { badge: "bg-green-100", text: "text-green-700" },
+                      "Material Transfer": { badge: "bg-blue-100", text: "text-blue-700" },
+                      "Material Issue": { badge: "bg-red-100", text: "text-red-700" },
+                    };
+                    const typeConfig = typeColors[activity.stock_entry_type] || { badge: "bg-gray-100", text: "text-gray-700" };
+
+                    return (
+                      <tr key={`${activity.entry_name}-${idx}`} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50/70">
+                        <td className="px-4 py-3 align-top text-sm text-gray-600">
+                          {new Date(activity.posting_date).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "2-digit",
+                          })}
+                        </td>
+                        <td className="px-4 py-3 align-top font-medium">
+                          <div className="space-y-0.5">
+                            <p className="font-mono text-xs text-gray-500">{activity.item_code}</p>
+                            <p className="text-sm text-gray-900">{activity.item_name}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-top text-center">
+                          <span className={cn("inline-block px-2.5 py-1 rounded-full text-xs font-semibold", typeConfig.badge, typeConfig.text)}>
+                            {activity.stock_entry_type === "Material Receipt"
+                              ? "Receipt"
+                              : activity.stock_entry_type === "Material Transfer"
+                                ? "Transfer"
+                                : activity.stock_entry_type === "Material Issue"
+                                  ? "Issue"
+                                  : activity.stock_entry_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 align-top text-center font-semibold whitespace-nowrap">{activity.qty} {activity.stock_uom}</td>
+                        <td className="px-4 py-3 align-top text-sm text-gray-600 whitespace-nowrap">
+                          {activity.source_warehouse && activity.target_warehouse
+                            ? `${activity.source_warehouse} → ${activity.target_warehouse}`
+                            : activity.source_warehouse || activity.target_warehouse || "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Quick Stock Preview — Slide-over Panel */}

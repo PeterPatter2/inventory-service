@@ -30,6 +30,29 @@ export interface StockAvailability {
   available_qty: number;
 }
 
+// ─── Low Stock Item (from GET /api/stock/low-stock) ─────────────
+export interface LowStockItem {
+  item_code: string;
+  item_name: string;
+  reorder_level: number;
+  actual_qty: number;
+  shortage: number;
+  stock_uom: string;
+}
+
+// ─── Recent Activity Item (from GET /api/stock/recent-activity) ──
+export interface RecentActivityItem {
+  entry_name: string;           // Stock Entry ID
+  posting_date: string;         // Date of activity
+  stock_entry_type: string;     // "Material Receipt" | "Material Transfer" | "Material Issue"
+  item_code: string;
+  item_name: string;
+  qty: number;
+  stock_uom: string;
+  source_warehouse?: string;
+  target_warehouse?: string;
+}
+
 // ─── Stock Entry / Movement ─────────────────────────────────────
 export type StockEntryType =
   | "Material Receipt"

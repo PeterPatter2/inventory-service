@@ -118,6 +118,63 @@ async def get_warehouse_inventory(warehouse: str):
     return data.get("data", [])
 
 
+@router.get("/low-stock", summary="Get items below reorder level")
+async def get_low_stock_items():
+    """Fetches all items where available quantity is below reorder level."""
+    # ── Get all items (stock items only) ──────────────────────
+    items_params = {
+        "fields": json.dumps(["item_code", "item_name", "stock_uom"]),
+        "filters": json.dumps([["is_stock_item", "=", 1]]),
+        "limit_page_length": 0,
+    }
+    items_data = await erpnext_get("/api/resource/Item", items_params)
+    items = items_data.get("data", [])
+    
+    # ── Get all bins (stock) ──────────────────────────────────
+    bins_params = {
+        "fields": json.dumps(["item_code", "warehouse", "actual_qty"]),
+        "limit_page_length": 0,
+    }
+    bins_data = await erpnext_get("/api/resource/Bin", bins_params)
+    bins = bins_data.get("data", [])
+    
+    # ── Aggregate stock per item ──────────────────────────────
+    item_stock: dict[str, float] = {}
+    for bin_row in bins:
+        code = bin_row.get("item_code")
+        qty = float(bin_row.get("actual_qty", 0))
+        if code:
+            item_stock[code] = item_stock.get(code, 0) + qty
+    
+    # ── Find items below reorder level ────────────────────────
+    low_stock = []
+    for item in items:
+        code = item.get("item_code")
+        # Fetch full item details to get reorder_level
+        try:
+            item_detail = await erpnext_get(f"/api/resource/Item/{code}", {})
+            item_data = item_detail.get("data", {})
+            reorder = float(item_data.get("reorder_level", 0))
+        except:
+            reorder = 0
+        
+        actual = item_stock.get(code, 0)
+        
+        if reorder > 0 and actual < reorder:
+            low_stock.append({
+                "item_code": code,
+                "item_name": item.get("item_name", ""),
+                "reorder_level": reorder,
+                "actual_qty": actual,
+                "shortage": reorder - actual,
+                "stock_uom": item.get("stock_uom", ""),
+            })
+    
+    # Sort by shortage (biggest shortage first)
+    low_stock.sort(key=lambda x: x["shortage"], reverse=True)
+    return low_stock
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Stock Availability  (calculated from Stock Entry history)
 # ═══════════════════════════════════════════════════════════════════════
@@ -251,6 +308,68 @@ async def get_stock_all_warehouses(item_code: str):
         ))
 
     return results
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Recent Activity  (recent stock movements) - MUST BE BEFORE /{item_code}
+# ═══════════════════════════════════════════════════════════════════════
+
+
+@router.get("/recent-activity", summary="Get 5 most recent stock movements")
+async def get_recent_activity() -> List[dict]:
+    """Fetches the 5 most recent submitted Stock Entry records with item details."""
+    # ── Fetch submitted Stock Entry records (recent first) ──────────
+    params = {
+        "fields": json.dumps(["name", "posting_date", "creation", "stock_entry_type"]),
+        "filters": json.dumps([["docstatus", "=", 1]]),
+        "order_by": "creation desc",
+        "limit_page_length": 5,
+    }
+    data = await erpnext_get("/api/resource/Stock Entry", params)
+    entries = data.get("data", [])
+    
+    result = []
+    for entry in entries:
+        entry_name = entry.get("name")
+        try:
+            # ── Fetch full entry with items ──────────────────────────
+            entry_detail = await erpnext_get(f"/api/resource/Stock Entry/{entry_name}")
+            entry_doc = entry_detail.get("data", {})
+            
+            # ── Extract items from this entry ────────────────────────
+            items = entry_doc.get("items", [])
+            posting_date = entry_doc.get("posting_date", "")
+            entry_type = entry_doc.get("stock_entry_type", "")
+            
+            for item_row in items:
+                item_code = item_row.get("item_code", "")
+                if not item_code:
+                    continue
+                
+                # ── Get item details ─────────────────────────────────
+                try:
+                    item_detail = await erpnext_get(f"/api/resource/Item/{item_code}")
+                    item_data = item_detail.get("data", {})
+                    item_name = item_data.get("item_name", "")
+                except:
+                    item_name = ""
+                
+                result.append({
+                    "entry_name": entry_name,
+                    "posting_date": posting_date,
+                    "stock_entry_type": entry_type,
+                    "item_code": item_code,
+                    "item_name": item_name,
+                    "qty": float(item_row.get("qty", 0)),
+                    "stock_uom": item_row.get("stock_uom", ""),
+                    "source_warehouse": item_row.get("s_warehouse", ""),
+                    "target_warehouse": item_row.get("t_warehouse", ""),
+                })
+        except Exception as e:
+            print(f"Error fetching {entry_name}: {e}")
+            continue
+    
+    return result
 
 
 @router.get(
