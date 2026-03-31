@@ -106,14 +106,28 @@ async def create_item(
     item_code: str,
     item_group: str,
     stock_uom: str,
+    item_name: Optional[str] = None,
     description: Optional[str] = None,
+    is_fixed_asset: int = 0,
+    is_stock_item: int = 1,
+    asset_category: Optional[str] = None,
 ) -> Any:
     """Create a new Item in ERPNext."""
     payload = {
         "item_code": item_code,
         "item_group": item_group,
         "stock_uom": stock_uom,
+        "is_fixed_asset": is_fixed_asset,
+        "is_stock_item": is_stock_item,
+        "item_defaults": [{
+            "company": "Group 2 Corporation",
+            "default_warehouse": "Stores - G2"
+        }]
     }
+    if item_name:
+        payload["item_name"] = item_name
+    if asset_category:
+        payload["asset_category"] = asset_category
     if description is not None:
         payload["description"] = description
         

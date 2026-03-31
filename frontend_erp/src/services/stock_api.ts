@@ -84,6 +84,12 @@ export async function createItem(payload: ItemCreateRequest): Promise<Item> {
   });
 }
 
+// ─── Item Groups ────────────────────────────────────────────────
+
+export async function getItemGroups(): Promise<{ name: string; item_group_name: string }[]> {
+  return stockFetch<{ name: string; item_group_name: string }[]>("/api/stock/item-groups");
+}
+
 // ─── Warehouses ─────────────────────────────────────────────────
 
 /** List all warehouses */

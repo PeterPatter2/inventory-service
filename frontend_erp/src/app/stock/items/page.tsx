@@ -35,6 +35,7 @@ import {
   getItems,
   createItem,
   getStockAllWarehouses,
+  getItemGroups,
   StockApiError,
 } from "@/services/stock_api";
 import type { Item, StockAvailability } from "@/types/stock";
@@ -50,6 +51,7 @@ export default function InventoryPage() {
   const [groupFilter, setGroupFilter] = React.useState("all");
   const [showCreate, setShowCreate] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
+  const [serverItemGroups, setServerItemGroups] = React.useState<{name: string, item_group_name: string}[]>([]);
 
   // Expanded row for availability
   const [expandedItem, setExpandedItem] = React.useState<string | null>(null);
@@ -61,9 +63,12 @@ export default function InventoryPage() {
   // Create form
   const [createForm, setCreateForm] = React.useState({
     item_code: "",
+    item_name: "",
     item_group: "Products",
     stock_uom: "Nos",
     opening_stock: 0,
+    is_fixed_asset: false,
+    asset_category: "IT_TOOLS_G2",
   });
 
   const loadItems = React.useCallback(async () => {
@@ -79,9 +84,19 @@ export default function InventoryPage() {
     }
   }, []);
 
+  const loadItemGroups = React.useCallback(async () => {
+    try {
+      const groups = await getItemGroups();
+      setServerItemGroups(groups);
+    } catch (err) {
+      console.error("Failed to load item groups", err);
+    }
+  }, []);
+
   React.useEffect(() => {
     loadItems();
-  }, [loadItems]);
+    loadItemGroups();
+  }, [loadItems, loadItemGroups]);
 
   // Get unique item groups for filter
   const itemGroups = React.useMemo(() => {
@@ -133,7 +148,14 @@ export default function InventoryPage() {
   const handleCreate = async () => {
     setCreating(true);
     try {
-      await createItem(createForm);
+      const payload = {
+        ...createForm,
+        is_fixed_asset: createForm.is_fixed_asset ? 1 : 0,
+        is_stock_item: createForm.is_fixed_asset ? 0 : 1,
+        asset_category: createForm.is_fixed_asset ? createForm.asset_category : undefined,
+      };
+      
+      await createItem(payload);
       addToast({
         title: "Item Created",
         description: `${createForm.item_code} registered successfully.`,
@@ -142,9 +164,12 @@ export default function InventoryPage() {
       setShowCreate(false);
       setCreateForm({
         item_code: "",
+        item_name: "",
         item_group: "Products",
         stock_uom: "Nos",
         opening_stock: 0,
+        is_fixed_asset: false,
+        asset_category: "IT_TOOLS_G2",
       });
       loadItems();
     } catch (err) {
@@ -434,15 +459,35 @@ export default function InventoryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ig">Item Group *</Label>
+              <Label htmlFor="in">Item Name</Label>
               <Input
-                id="ig"
-                placeholder="e.g. Products"
-                value={createForm.item_group}
+                id="in"
+                placeholder="e.g. Blue Pen"
+                value={createForm.item_name}
                 onChange={(e) =>
-                  setCreateForm((p) => ({ ...p, item_group: e.target.value }))
+                  setCreateForm((p) => ({ ...p, item_name: e.target.value }))
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ig">Item Group *</Label>
+              <Select
+                value={createForm.item_group}
+                onValueChange={(val) =>
+                  setCreateForm((p) => ({ ...p, item_group: val }))
+                }
+              >
+                <SelectTrigger id="ig">
+                  <SelectValue placeholder="Select a group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {serverItemGroups.map((g) => (
+                    <SelectItem key={g.name} value={g.name}>
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="uom">Stock UOM *</Label>
@@ -468,7 +513,31 @@ export default function InventoryPage() {
                     opening_stock: parseFloat(e.target.value) || 0,
                   }))
                 }
+                disabled={createForm.is_fixed_asset}
               />
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <input
+                type="checkbox"
+                id="fixed_asset"
+                className="w-4 h-4 rounded border-gray-300"
+                checked={createForm.is_fixed_asset}
+                onChange={(e) =>
+                  setCreateForm((p) => ({
+                    ...p,
+                    is_fixed_asset: e.target.checked,
+                    item_group: e.target.checked ? "Hardware G2" : "Products",
+                  }))
+                }
+              />
+              <div className="space-y-0.5">
+                <Label htmlFor="fixed_asset" className="cursor-pointer">
+                  Is Fixed Asset?
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Check this to create an item that can be used as an Asset.
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>

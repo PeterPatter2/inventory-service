@@ -18,9 +18,13 @@ class Item(BaseModel):
 
 class ItemCreate(BaseModel):
     item_code: str
+    item_name: Optional[str] = None
     item_group: str = "Products"
     stock_uom: str = "Nos"
     opening_stock: float = 0
+    is_fixed_asset: int = 0
+    is_stock_item: int = 1
+    asset_category: Optional[str] = None
 
 
 # ── Warehouse ─────────────────────────────────────────────────────
