@@ -1,4 +1,4 @@
-# Inventory-service (Group 2) 🚀
+# Inventory-Service (Group 2) 🚀
 
 This repository contains the complete frontend and backend services for the **Group 2** project. The system is entirely Dockerized and designed to integrate seamlessly with ERPNext, featuring automated application staging and data seeding.
 
@@ -24,7 +24,7 @@ cd inventory-service
 ```
 
 ### 2. Configure Environment Variables
-Inside the `Group2_Stock-And-Asset` folder, create a `.env` file containing your ERPNext credentials. Use the following format:
+Inside the `inventory-service` folder, create a `.env` file containing your ERPNext credentials. Use the following format:
 ```env
 # Use 'host.docker.internal' to allow the Docker container to connect to ERPNext on your Mac/Host machine
 ERPNEXT_URL=http://host.docker.internal:8080
