@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import httpx
 from datetime import date, datetime
 import os
+import json
 from app.config import settings
 
 # ==========================================
@@ -47,6 +48,98 @@ def get_headers():
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
+
+
+def _parse_iso_date(value: str) -> date:
+    try:
+        return datetime.fromisoformat(value).date()
+    except Exception:
+        return date.today()
+
+
+def _pick_date_in_active_fiscal_year(
+    requested_date: date,
+    active_ranges: List[Tuple[date, date]],
+) -> date:
+    if not active_ranges:
+        return requested_date
+
+    for start, end in active_ranges:
+        if start <= requested_date <= end:
+            return requested_date
+
+    today = date.today()
+    for start, end in active_ranges:
+        if start <= today <= end:
+            return today
+
+    latest_start, latest_end = max(active_ranges, key=lambda r: r[0])
+    return latest_start if latest_start <= latest_end else requested_date
+
+
+def _is_date_in_active_fiscal_year(
+    requested_date: date,
+    active_ranges: List[Tuple[date, date]],
+) -> bool:
+    for start, end in active_ranges:
+        if start <= requested_date <= end:
+            return True
+    return False
+
+
+def _extract_erp_error_text(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+    except Exception:
+        return response.text
+
+    if isinstance(body, dict):
+        detail = body.get("exception") or body.get("message") or ""
+        server_messages = body.get("_server_messages")
+        if isinstance(server_messages, str):
+            try:
+                parsed = json.loads(server_messages)
+                if parsed and isinstance(parsed[0], str):
+                    inner = json.loads(parsed[0])
+                    detail = inner.get("message") or detail
+            except Exception:
+                pass
+        return detail or response.text
+
+    return response.text
+
+
+def _is_fiscal_year_error(error_text: str) -> bool:
+    normalized = (error_text or "").lower()
+    return (
+        "fiscalyearerror" in normalized
+        or "not in any active fiscal year" in normalized
+        or "active fiscal year" in normalized
+    )
+
+
+async def _get_active_fiscal_year_ranges(client: httpx.AsyncClient) -> List[Tuple[date, date]]:
+    fields = '["name", "year_start_date", "year_end_date", "disabled"]'
+    filters = '[["disabled", "=", 0]]'
+    url = (
+        f"{settings.erpnext_url}/api/resource/Fiscal Year"
+        f"?fields={fields}&filters={filters}&limit_page_length=200"
+    )
+    res = await client.get(url, headers=get_headers())
+    if res.status_code != 200:
+        return []
+
+    ranges: List[Tuple[date, date]] = []
+    for row in res.json().get("data", []):
+        start_raw = row.get("year_start_date")
+        end_raw = row.get("year_end_date")
+        if not start_raw or not end_raw:
+            continue
+        start_date = _parse_iso_date(start_raw)
+        end_date = _parse_iso_date(end_raw)
+        if start_date <= end_date:
+            ranges.append((start_date, end_date))
+    return ranges
 
 # 1. READ: ดึงรายการทรัพย์สินทั้งหมด
 @router.get("/assets")
@@ -107,29 +200,95 @@ async def get_locations():
 @router.post("/assets/create")
 async def create_asset(request: AssetCreateRequest):
     url_create = f"{settings.erpnext_url}/api/resource/Asset"
-    payload_create: dict = {
-        "item_code": request.item_code,
-        "asset_name": request.asset_name,
-        "location": request.location,
-        "company": request.company,
-        "is_existing_asset": 1,
-        "gross_purchase_amount": request.gross_purchase_amount,
-        "purchase_date": request.purchase_date,
-        "available_for_use_date": request.available_for_use_date,
-        "calculate_depreciation": 1 if request.calculate_depreciation else 0
-    }
-    
-    if request.calculate_depreciation == 1 and request.finance_books:
-        payload_create["finance_books"] = [
-            book.model_dump() if hasattr(book, 'model_dump') else book.dict() 
-            for book in request.finance_books
-        ]
-    
+
     async with httpx.AsyncClient() as client:
+        active_fiscal_years = await _get_active_fiscal_year_ranges(client)
+
+        if request.calculate_depreciation == 1 and not active_fiscal_years:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "No active Fiscal Year found in ERPNext. "
+                    "Please enable/create a Fiscal Year before creating depreciable assets."
+                ),
+            )
+
+        purchase_date_obj = _parse_iso_date(request.purchase_date)
+        available_date_obj = _parse_iso_date(request.available_for_use_date)
+
+        if request.calculate_depreciation == 1:
+            if not _is_date_in_active_fiscal_year(purchase_date_obj, active_fiscal_years):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "FISCAL_YEAR_ERROR",
+                        "message": "Asset date is outside active Fiscal Year.",
+                        "hint": "Adjust purchase/depreciation dates or configure Fiscal Year in ERPNext.",
+                        "erp_message": f"Date {purchase_date_obj.strftime('%d-%m-%Y')} is not in any active Fiscal Year",
+                        "field": "purchase_date",
+                    },
+                )
+
+            if not _is_date_in_active_fiscal_year(available_date_obj, active_fiscal_years):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "FISCAL_YEAR_ERROR",
+                        "message": "Asset date is outside active Fiscal Year.",
+                        "hint": "Adjust purchase/depreciation dates or configure Fiscal Year in ERPNext.",
+                        "erp_message": f"Date {available_date_obj.strftime('%d-%m-%Y')} is not in any active Fiscal Year",
+                        "field": "available_for_use_date",
+                    },
+                )
+
+        payload_create: dict = {
+            "item_code": request.item_code,
+            "asset_name": request.asset_name,
+            "location": request.location,
+            "company": request.company,
+            "is_existing_asset": 1,
+            "gross_purchase_amount": request.gross_purchase_amount,
+            "purchase_date": request.purchase_date,
+            "available_for_use_date": request.available_for_use_date,
+            "calculate_depreciation": 1 if request.calculate_depreciation else 0
+        }
+
+        if request.calculate_depreciation == 1 and request.finance_books:
+            finance_books_payload = [
+                book.model_dump() if hasattr(book, "model_dump") else book.dict()
+                for book in request.finance_books
+            ]
+            for index, book in enumerate(finance_books_payload):
+                start_date_raw = book.get("depreciation_start_date", request.available_for_use_date)
+                start_date = _parse_iso_date(start_date_raw)
+                if not _is_date_in_active_fiscal_year(start_date, active_fiscal_years):
+                    raise HTTPException(
+                        status_code=400,
+                        detail={
+                            "code": "FISCAL_YEAR_ERROR",
+                            "message": "Asset date is outside active Fiscal Year.",
+                            "hint": "Adjust purchase/depreciation dates or configure Fiscal Year in ERPNext.",
+                            "erp_message": f"Date {start_date.strftime('%d-%m-%Y')} is not in any active Fiscal Year",
+                            "field": f"finance_books[{index}].depreciation_start_date",
+                        },
+                    )
+            payload_create["finance_books"] = finance_books_payload
+
         # สเตปที่ 1: สร้าง Draft
         res_create = await client.post(url_create, headers=get_headers(), json=payload_create)
         if res_create.status_code != 200:
-            raise HTTPException(status_code=res_create.status_code, detail=res_create.text)
+            response_text = _extract_erp_error_text(res_create)
+            if _is_fiscal_year_error(response_text):
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "FISCAL_YEAR_ERROR",
+                        "message": "Asset date is outside active Fiscal Year.",
+                        "hint": "Adjust purchase/depreciation dates or configure Fiscal Year in ERPNext.",
+                        "erp_message": response_text,
+                    },
+                )
+            raise HTTPException(status_code=res_create.status_code, detail=response_text)
             
         # ดึง Asset ID ที่เพิ่งสร้าง
         asset_id = res_create.json().get("data").get("name")
