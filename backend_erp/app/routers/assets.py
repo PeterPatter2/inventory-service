@@ -21,7 +21,7 @@ class AssetCreateRequest(BaseModel):
     item_code: str
     asset_name: str
     location: str
-    company: str = "PSE" # ต้องใส่ชื่อ Company ให้ตรงกับใน ERPNext
+    company: str = "Group 2 Corporation" # ต้องใส่ชื่อ Company ให้ตรงกับใน ERPNext
     gross_purchase_amount: float
     purchase_date: str = date.today().isoformat()
     available_for_use_date: str = date.today().isoformat()

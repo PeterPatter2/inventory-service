@@ -317,6 +317,7 @@ async def create_stock_movement(payload: StockEntryCreate):
     doc = {
         "doctype": "Stock Entry",
         "stock_entry_type": payload.stock_entry_type,
+        "company": "Group 2 Corporation",
         "docstatus": 1,  # ALWAYS force submit (docstatus=1)
         "items": items_rows,
     }
