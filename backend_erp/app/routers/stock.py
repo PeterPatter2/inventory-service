@@ -60,10 +60,28 @@ async def create_new_item(payload: ItemCreate):
     result = await create_item(
         item_code=payload.item_code,
         item_group=payload.item_group,
+        item_name=payload.item_name,
         stock_uom=payload.stock_uom,
         description=desc,
+        is_fixed_asset=payload.is_fixed_asset,
+        is_stock_item=payload.is_stock_item,
+        asset_category=payload.asset_category
     )
     return result.get("data", {})
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  List Item Groups (read-only)
+# ═══════════════════════════════════════════════════════════════════════
+
+@router.get("/item-groups", summary="List all Item Groups")
+async def list_item_groups():
+    params = {
+        "fields": json.dumps(["name", "item_group_name"]),
+        "limit_page_length": 0,
+    }
+    data = await erpnext_get("/api/resource/Item Group", params)
+    return data.get("data", [])
 
 
 # ═══════════════════════════════════════════════════════════════════════

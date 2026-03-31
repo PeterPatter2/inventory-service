@@ -66,6 +66,12 @@ def main():
     # 3. Asset Category
     create_doc("Asset Category", {
         "asset_category_name": "IT_TOOLS_G2",
+        "accounts": [{
+            "company_name": "Group 2 Corporation",
+            "fixed_asset_account": "Capital Equipments - G2",
+            "accumulated_depreciation_account": "Accumulated Depreciation - G2",
+            "depreciation_expense_account": "Depreciation - G2"
+        }]
     }, [["asset_category_name", "=", "IT_TOOLS_G2"]])
     
     # 4. Locations
@@ -77,12 +83,12 @@ def main():
         "location_name": "IT Room G2"
     }, [["location_name", "=", "IT Room G2"]])
     
-    # 5. Warehouse
+    # 5. Warehouse (ERPNext auto-appends company abbr natively, so we check for 'Stores - G2')
     create_doc("Warehouse", {
-        "warehouse_name": "Stores - G2",
+        "warehouse_name": "Stores",
         "company": "Group 2 Corporation",
         "is_group": 0
-    }, [["warehouse_name", "=", "Stores - G2"]])
+    }, [["name", "=", "Stores - G2"]])
     
     # 6. Item 1 (Asset Tests)
     create_doc("Item", {
@@ -91,7 +97,8 @@ def main():
         "item_group": "Hardware G2",
         "is_stock_item": 0,
         "is_fixed_asset": 1,
-        "asset_category": "IT_TOOLS_G2"
+        "asset_category": "IT_TOOLS_G2",
+        "item_defaults": [{"company": "Group 2 Corporation", "default_warehouse": "Stores - G2"}]
     }, [["item_code", "=", "APT_001_G2"]])
     
     # 7. Item 2 (Stock Tests)
@@ -99,7 +106,8 @@ def main():
         "item_code": "STK_001_G2",
         "item_name": "Mouse G2",
         "item_group": "Hardware G2",
-        "is_stock_item": 1
+        "is_stock_item": 1,
+        "item_defaults": [{"company": "Group 2 Corporation", "default_warehouse": "Stores - G2"}]
     }, [["item_code", "=", "STK_001_G2"]])
     
     print("=== Seeding Finished ===")

@@ -165,6 +165,7 @@ async def move_asset(request: AssetMoveRequest):
     url_create = f"{settings.erpnext_url}/api/resource/Asset Movement"
     payload_create = {
         "purpose": "Transfer",
+        "company": "Group 2 Corporation",
         "transaction_date": datetime.now().isoformat(),
         "assets": [{"asset": request.asset_id, "target_location": request.target_location}]
     }
@@ -194,6 +195,7 @@ async def repair_asset(request: AssetRepairRequest):
     url = f"{settings.erpnext_url}/api/resource/Asset Repair"
     payload = {
         "asset": request.asset_id,
+        "company": "Group 2 Corporation",
         "repair_status": "Pending",
         "failure_date": date.today().isoformat(),
         "description": request.description

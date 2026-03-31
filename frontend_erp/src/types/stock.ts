@@ -12,6 +12,9 @@ export interface ItemCreateRequest {
   item_group: string;
   stock_uom: string;       // e.g. "Nos", "Kg", "Box"
   opening_stock?: number;
+  is_fixed_asset?: number;
+  is_stock_item?: number;
+  asset_category?: string;
 }
 
 // ─── Warehouse (from GET /api/stock/warehouses) ─────────────────
